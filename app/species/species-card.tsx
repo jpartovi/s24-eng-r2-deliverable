@@ -11,11 +11,18 @@ React server components don't track state between rerenders, so leaving the uniq
 can cause errors with matching props and state in child components if the list order changes.
 */
 import type { Database } from "@/lib/schema";
+import { createServerSupabaseClient } from "@/lib/server-utils";
 import Image from "next/image";
+import { redirect } from "next/navigation";
 import SpeciesDetailsDialog from "./species-details-dialog";
 type Species = Database["public"]["Tables"]["species"]["Row"];
 
-export default function SpeciesCard({ species }: { species: Species }) {
+//export default  function SpeciesCard({ species }: { species: Species }, { userId }: { userId: string }) {
+export default  function SpeciesCard({ species, userId }: {
+  species: Species;
+  userId: string;
+}) {
+
   return (
     <div className="m-4 w-72 min-w-72 flex-none rounded border-2 p-3 shadow">
       {species.image && (
@@ -26,7 +33,7 @@ export default function SpeciesCard({ species }: { species: Species }) {
       <h3 className="mt-3 text-2xl font-semibold">{species.scientific_name}</h3>
       <h4 className="text-lg font-light italic">{species.common_name}</h4>
       <p>{species.description ? species.description.slice(0, 150).trim() + "..." : ""}</p>
-      <SpeciesDetailsDialog species={species} />
+      <SpeciesDetailsDialog species={species} userId={userId}/>
     </div>
   );
 }
