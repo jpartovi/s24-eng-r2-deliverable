@@ -141,6 +141,37 @@ export default function SpeciesDetailsDialog({ species, userId }: {
     flipEditing();
   }
 
+  const handleDelete = async () => {
+    if (!window.confirm("Are you sure you want to delete this species?")) {
+      return;
+    }
+    const supabase = createBrowserSupabaseClient();
+    const { error } = await supabase
+      .from('species')
+      .delete()
+      .eq('id', species.id)
+
+    // Catch and report errors from Supabase and exit the onSaveChanges function with an early 'return' if an error occurred.
+    if (error) {
+      return toast({
+        title: "Something went wrong.",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+
+    // Refresh all server components in the current route.
+    router.refresh();
+
+    setOpen(false);
+
+    return toast({
+      title: "Species Deleted",
+      description: "Successfully deleted " + species.scientific_name + ".",
+    });
+  }
+
+
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -281,13 +312,14 @@ export default function SpeciesDetailsDialog({ species, userId }: {
                       }}
                     />
                     <div className="flex">
-                      <Button type="submit" className="ml-1 mr-1 flex-auto">
+                      <Button type="submit" className="mr-1 flex-auto">
                         Save Changes
                       </Button>
-                      <Button type="button" className="ml-1 mr-1 flex-auto" variant="secondary" onClick={handleCancel}>
+                      <Button type="button" className="ml-1 flex-auto" variant="secondary" onClick={handleCancel}>
                         Cancel
                       </Button>
                     </div>
+                    <Button className="w-full" variant="destructive" onClick={handleDelete}>Delete Species</Button>
                   </div>
                 </form>
               </Form>
