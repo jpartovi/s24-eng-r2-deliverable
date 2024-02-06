@@ -4,6 +4,9 @@ import { createServerSupabaseClient } from "@/lib/server-utils";
 import { redirect } from "next/navigation";
 import AddSpeciesDialog from "./add-species-dialog";
 import SpeciesCard from "./species-card";
+import type { Database } from "@/lib/schema";
+
+export type Comment = Database["public"]["Tables"]["comments"]["Row"];
 
 export default async function SpeciesList() {
   // Create supabase server component client and obtain user session from stored cookie
@@ -21,6 +24,7 @@ export default async function SpeciesList() {
   const sessionId = session.user.id;
 
   const { data: species } = await supabase.from("species").select("*").order("id", { ascending: false });
+  const { data: comments } = await supabase.from("comments").select("*").order("created_at", { ascending: false });
 
   return (
     <>
@@ -30,7 +34,7 @@ export default async function SpeciesList() {
       </div>
       <Separator className="my-4" />
       <div className="flex flex-wrap justify-center">
-        {species?.map((species) => <SpeciesCard key={species.id} species={species} userId={sessionId} />)}
+        {species?.map((species) => <SpeciesCard key={species.id} species={species} comments={comments?.filter((comment) => comment.species == species.id).map((filteredComment) => filteredComment) ?? []} userId={sessionId} />)}
       </div>
     </>
   );

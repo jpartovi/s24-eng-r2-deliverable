@@ -21,8 +21,9 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { numberWithCommas } from "../formatting";
 import Image from "next/image";
-
-type Species = Database["public"]["Tables"]["species"]["Row"];
+import CommentCard from "./comment-card";
+import { Comment } from "./page";
+import { Species } from "./species-card";
 
 // We use zod (z) to define a schema for the "Add species" form.
 // zod handles validation of the input values with methods like .string(), .nullable(). It also processes the form inputs with .transform() before the inputs are sent to the database.
@@ -57,10 +58,26 @@ const speciesSchema = z.object({
     .transform((val) => (!val || val.trim() === "" ? null : val.trim())),
 });
 
-type FormData = z.infer<typeof speciesSchema>;
+type SpeciesFormData = z.infer<typeof speciesSchema>;
 
-export default function SpeciesDetailsDialog({ species, userId }: {
+// Use Zod to define the shape + requirements of a Profile entry; used in form validation
+const commentFormSchema = z.object({
+  content: z
+    .string()
+    .min(1, {
+      message: "Comment must be at least 1 character.",
+    })
+    .max(150, {
+      message: "Comment must not be longer than 150 characters.",
+    })
+    .transform((val) => val.trim())
+});
+
+type CommentFormData = z.infer<typeof commentFormSchema>
+
+export default function SpeciesDetailsDialog({ species, comments, userId }: {
   species: Species;
+  comments: Comment[];
   userId: string;
 }) {
 
@@ -77,8 +94,10 @@ export default function SpeciesDetailsDialog({ species, userId }: {
 
   const router = useRouter();
 
+  const supabase = createBrowserSupabaseClient();
+
   // Default values for the form fields.
-  const defaultValues: Partial<FormData> = {
+  const speciesDefaultValues: Partial<SpeciesFormData> = {
     scientific_name: species.scientific_name,
     common_name: species.common_name,
     kingdom: species.kingdom,
@@ -89,16 +108,16 @@ export default function SpeciesDetailsDialog({ species, userId }: {
 
 
   // Instantiate form functionality with React Hook Form, passing in the Zod schema (for validation) and default values.
-  const form = useForm<FormData>({
+  const speciesForm = useForm<SpeciesFormData>({
     resolver: zodResolver(speciesSchema),
-    defaultValues,
+    defaultValues: speciesDefaultValues,
     mode: "onChange",
   });
 
-  const onSaveChanges = async (input: FormData) => {
+  const onSaveChanges = async (input: SpeciesFormData) => {
 
     // Update the current species with Supabase query.
-    const supabase = createBrowserSupabaseClient();
+    //const supabase = createBrowserSupabaseClient();
     const { error } = await supabase.from("species").update(input).eq("id", species.id);
 
     // Catch and report errors from Supabase and exit the onSaveChanges function with an early 'return' if an error occurred.
@@ -114,7 +133,7 @@ export default function SpeciesDetailsDialog({ species, userId }: {
 
 
     // Reset form values.
-    form.reset(input);
+    speciesForm.reset(input);
 
     //setOpen(false);
 
@@ -141,6 +160,7 @@ export default function SpeciesDetailsDialog({ species, userId }: {
     flipEditing();
   }
 
+  // Handles delete button with a confirmation modal and deletes the current species from the Supabase db
   const handleDelete = async () => {
     if (!window.confirm("Are you sure you want to delete this species?")) {
       return;
@@ -171,7 +191,54 @@ export default function SpeciesDetailsDialog({ species, userId }: {
     });
   }
 
+  // TODO: COMMENTS
 
+  type CommentFormValues = z.infer<typeof commentFormSchema>;
+
+  const commentDefaultValues = {
+    content: "",
+    species: species.id
+  };
+
+  // Instantiate form functionality with React Hook Form, passing in the Zod schema (for validation) and default values
+  const commentForm = useForm<CommentFormValues>({
+    resolver: zodResolver(commentFormSchema),
+    defaultValues: commentDefaultValues,
+    mode: "onChange",
+  });
+
+  const onPost = async (input: CommentFormValues) => {
+    // Instantiate Supabase client (for client components) and make update based on input data
+    //const supabase = createBrowserSupabaseClient();
+    const { error } = await supabase.from("comments").insert([
+      {
+        author: userId,
+        content: input.content,
+        species: species.id
+      },
+    ]);
+
+    // Catch and report errors from Supabase and exit the onSubmit function with an early 'return' if an error occurred.
+    if (error) {
+      return toast({
+        title: "Something went wrong.",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+
+    // Because Supabase errors were caught above, the remainder of the function will only execute upon a successful edit
+
+    commentForm.reset(commentDefaultValues);
+
+    // Router.refresh does not affect CommentForm because it is a client component, but it will refresh the initials in the user-nav in the event of a username change
+    router.refresh();
+
+    return toast({
+      title: "Comment Posted!",
+      description: "Successfully commented \"" + (input.content.slice(0, 25).trim() + (input.content.length > 25 ? "..." : "")) + "\""
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -187,11 +254,11 @@ export default function SpeciesDetailsDialog({ species, userId }: {
               Click &quot;Save Changes&quot; below when you&apos;re done.
             </DialogDescription>
             </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={(e: BaseSyntheticEvent) => void form.handleSubmit(onSaveChanges)(e)}>
+              <Form {...speciesForm}>
+                <form onSubmit={(e: BaseSyntheticEvent) => void speciesForm.handleSubmit(onSaveChanges)(e)}>
                   <div className="grid w-full items-center gap-4">
                     <FormField
-                      control={form.control}
+                      control={speciesForm.control}
                       name="scientific_name"
                       render={({ field }) => (
                         <FormItem>
@@ -204,7 +271,7 @@ export default function SpeciesDetailsDialog({ species, userId }: {
                       )}
                     />
                     <FormField
-                      control={form.control}
+                      control={speciesForm.control}
                       name="common_name"
                       render={({ field }) => {
                         // We must extract value from field and convert a potential defaultValue of `null` to "" because inputs can't handle null values: https://github.com/orgs/react-hook-form/discussions/4091
@@ -221,7 +288,7 @@ export default function SpeciesDetailsDialog({ species, userId }: {
                       }}
                     />
                     <FormField
-                      control={form.control}
+                      control={speciesForm.control}
                       name="kingdom"
                       render={({ field }) => (
                         <FormItem>
@@ -247,7 +314,7 @@ export default function SpeciesDetailsDialog({ species, userId }: {
                       )}
                     />
                     <FormField
-                      control={form.control}
+                      control={speciesForm.control}
                       name="total_population"
                       render={({ field }) => {
                         const { value, ...rest } = field;
@@ -270,7 +337,7 @@ export default function SpeciesDetailsDialog({ species, userId }: {
                       }}
                     />
                     <FormField
-                      control={form.control}
+                      control={speciesForm.control}
                       name="image"
                       render={({ field }) => {
                         // We must extract value from field and convert a potential defaultValue of `null` to "" because inputs can't handle null values: https://github.com/orgs/react-hook-form/discussions/4091
@@ -291,7 +358,7 @@ export default function SpeciesDetailsDialog({ species, userId }: {
                       }}
                     />
                     <FormField
-                      control={form.control}
+                      control={speciesForm.control}
                       name="description"
                       render={({ field }) => {
                         // We must extract value from field and convert a potential defaultValue of `null` to "" because textareas can't handle null values: https://github.com/orgs/react-hook-form/discussions/4091
@@ -325,7 +392,6 @@ export default function SpeciesDetailsDialog({ species, userId }: {
               </Form>
           </div>
         ) : (
-          // TODO: Edit placeholders
           <div>
             <DialogHeader>
               <DialogTitle>{species.scientific_name}</DialogTitle>
@@ -341,7 +407,30 @@ export default function SpeciesDetailsDialog({ species, userId }: {
               Kingdom: {species.kingdom} {species.total_population ? ", Total Population: " + numberWithCommas(species.total_population): ""}
             </h4>
             <p>{species.description ? species.description : ""}</p>
-            <Button className="mt-3 w-full" onClick={flipEditing}>Edit Species</Button>
+            {userId == species.author && <Button className="mt-3 w-full" onClick={flipEditing}>Edit Species</Button>}
+            <Form {...commentForm}>
+              <form onSubmit={(e: BaseSyntheticEvent) => void commentForm.handleSubmit(onPost)(e)} className="space-y-8">
+                <FormField
+                  control={commentForm.control}
+                  name="content"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        {/* Set inputs to readOnly (boolean prop) depending on toggleable value of isEditing */}
+                        <div className="flex mt-3 gap-3">
+                          <Input placeholder="Leave a comment!" {...field} />
+                          <Button>Post</Button>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </form>
+            </Form>
+            {comments.length != 0 && <div className="m-4 flex flex-wrap justify-center">
+              {comments?.map((comment) => <CommentCard key={comment.id} comment={comment} userId={userId}/>)}
+            </div>}
           </div>
         )}
       </DialogContent>

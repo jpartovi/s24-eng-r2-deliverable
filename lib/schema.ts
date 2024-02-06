@@ -6,21 +6,21 @@ export interface Database {
       comments: {
         Row: {
           author: string;
-          content: string | null;
+          content: string;
           created_at: string;
           id: number;
           species: number | null;
         };
         Insert: {
           author: string;
-          content?: string | null;
+          content: string;
           created_at?: string;
           id?: number;
           species?: number | null;
         };
         Update: {
           author?: string;
-          content?: string | null;
+          content?: string;
           created_at?: string;
           id?: number;
           species?: number | null;
