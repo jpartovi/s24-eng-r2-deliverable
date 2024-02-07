@@ -13,20 +13,17 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { createBrowserSupabaseClient } from "@/lib/client-utils";
-import type { Database } from "@/lib/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, type BaseSyntheticEvent } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { numberWithCommas } from "../formatting";
-import Image from "next/image";
+import { SpeciesFormData, kingdoms, speciesSchema } from "./add-species-dialog";
 import CommentCard from "./comment-card";
-import { Comment, CommentsWithNames } from "./page";
+import { CommentsWithNames } from "./page";
 import { Species } from "./species-card";
-import { kingdoms } from "./add-species-dialog";
-import { speciesSchema } from "./add-species-dialog";
-import { SpeciesFormData } from "./add-species-dialog";
 
 // Use Zod to define the shape + requirements of a Comment entry; used in form validation
 const commentFormSchema = z.object({
@@ -43,8 +40,6 @@ const commentFormSchema = z.object({
     })
     .transform((val) => val.trim())
 });
-
-type CommentFormData = z.infer<typeof commentFormSchema>
 
 export default function SpeciesDetailsDialog({ species, comments, userId }: {
   species: Species;
@@ -162,21 +157,21 @@ export default function SpeciesDetailsDialog({ species, comments, userId }: {
     });
   }
 
-  type CommentFormValues = z.infer<typeof commentFormSchema>;
+  type CommentFormData = z.infer<typeof commentFormSchema>;
 
   // Default values for the comment form field.
-  const commentDefaultValues = {
+  const commentDefaultValues: Partial<CommentFormData> = {
     content: ""
   };
 
   // Instantiate form functionality with React Hook Form, passing in the Zod schema (for validation) and default values
-  const commentForm = useForm<CommentFormValues>({
+  const commentForm = useForm<CommentFormData>({
     resolver: zodResolver(commentFormSchema),
     defaultValues: commentDefaultValues,
     mode: "onChange",
   });
 
-  const onPost = async (input: CommentFormValues) => {
+  const onPost = async (input: CommentFormData) => {
     // Instantiate Supabase client (for client components) and make update based on input data
     //const supabase = createBrowserSupabaseClient();
     const { error } = await supabase.from("comments").insert([
@@ -397,9 +392,7 @@ export default function SpeciesDetailsDialog({ species, comments, userId }: {
               </form>
             </Form>
             {comments.length != 0 && <div className="m-4 flex flex-wrap justify-center">
-              {
-                comments?.map((comment) => <CommentCard key={comment.id} comment={comment} userId={userId}/>)
-              }
+              {comments?.map((comment) => <CommentCard key={comment.id} comment={comment} userId={userId}/>)}
             </div>}
           </div>
         )}
