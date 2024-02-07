@@ -20,10 +20,11 @@ import { useState, type BaseSyntheticEvent } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { numberWithCommas } from "../formatting";
-import { SpeciesFormData, kingdoms, speciesSchema } from "./add-species-dialog";
+import { kingdoms, speciesSchema } from "./add-species-dialog";
+import type { SpeciesFormData } from "./add-species-dialog";
 import CommentCard from "./comment-card";
-import { CommentsWithNames } from "./page";
-import { Species } from "./species-card";
+import type { CommentsWithNames } from "./page";
+import type { Species } from "./species-card";
 
 // Use Zod to define the shape + requirements of a Comment entry; used in form validation
 const commentFormSchema = z.object({
@@ -350,7 +351,11 @@ export default function SpeciesDetailsDialog({ species, comments, userId }: {
                         Cancel
                       </Button>
                     </div>
-                    <Button className="w-full" variant="destructive" onClick={handleDelete}>Delete Species</Button>
+                    <Button className="w-full" variant="destructive" onClick={
+                      () => {
+                        void handleDelete();
+                      }
+                    }>Delete Species</Button>
                   </div>
                 </form>
               </Form>

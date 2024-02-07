@@ -5,11 +5,11 @@ import { toast } from "@/components/ui/use-toast";
 import { createBrowserSupabaseClient } from "@/lib/client-utils";
 import { format } from 'date-fns';
 import { useRouter } from "next/navigation";
-import { CommentsWithNames } from "./page";
+import type { CommentsWithNames } from "./page";
 
 type CommentWithName = CommentsWithNames[number];
 
-export default async function CommentCard({ comment, userId }: {
+export default function CommentCard({ comment, userId }: {
   comment: CommentWithName;
   userId: string;
 }) {
@@ -22,11 +22,15 @@ export default async function CommentCard({ comment, userId }: {
 
   // // Handles comment deletion: removes comment from Supabase and refreshes route
   const handleDelete = async () => {
+
+    console.log("hi there");
+
     if (!window.confirm("Are you sure you want to delete this comment?")) {
       return;
     }
 
     const supabase = createBrowserSupabaseClient();
+
     const { error } = await supabase
       .from('comments')
       .delete()
@@ -55,7 +59,9 @@ export default async function CommentCard({ comment, userId }: {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h4 className="text-lg font-medium">{comment.profiles?.display_name}</h4>
         {userId == comment.author && (
-          <Button variant="destructive" className="h-7 px-3" onClick={handleDelete}>Delete</Button>
+          <Button variant="destructive" className="h-7 px-3" onClick={() => {
+            void handleDelete();
+          }}>Delete</Button>
         )}
       </div>
       <h4 className="text-sm font-light">{formattedTime}</h4>

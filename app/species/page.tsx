@@ -2,7 +2,7 @@ import { Separator } from "@/components/ui/separator";
 import { TypographyH2 } from "@/components/ui/typography";
 import type { Database } from "@/lib/schema";
 import { createServerSupabaseClient } from "@/lib/server-utils";
-import { QueryData } from "@supabase/supabase-js";
+import type { QueryData } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import AddSpeciesDialog from "./add-species-dialog";
 import SpeciesCard from "./species-card";
@@ -40,8 +40,6 @@ export default async function SpeciesList() {
   const { data: species } = await supabase.from("species").select("*").order("id", { ascending: false });
   const { data } = await commentsWithNamesQuery;
   const commentsWithNames = data;
-
-  console.log(commentsWithNames);
 
   return (
     <>
