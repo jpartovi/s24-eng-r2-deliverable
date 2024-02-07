@@ -27,10 +27,10 @@ import { z } from "zod";
 // zod handles validation of the input values with methods like .string(), .nullable(). It also processes the form inputs with .transform() before the inputs are sent to the database.
 
 // Define kingdom enum for use in Zod schema and displaying dropdown options in the form
-const kingdoms = z.enum(["Animalia", "Plantae", "Fungi", "Protista", "Archaea", "Bacteria"]);
+export const kingdoms = z.enum(["Animalia", "Plantae", "Fungi", "Protista", "Archaea", "Bacteria"]);
 
 // Use Zod to define the shape + requirements of a Species entry; used in form validation
-const speciesSchema = z.object({
+export const speciesSchema = z.object({
   scientific_name: z
     .string()
     .trim()
@@ -56,7 +56,7 @@ const speciesSchema = z.object({
     .transform((val) => (!val || val.trim() === "" ? null : val.trim())),
 });
 
-type FormData = z.infer<typeof speciesSchema>;
+export type SpeciesFormData = z.infer<typeof speciesSchema>;
 
 // Default values for the form fields.
 /* Because the react-hook-form (RHF) used here is a controlled form (not an uncontrolled form),
@@ -65,7 +65,7 @@ Otherwise, they will be `undefined` by default, which will raise warnings becaus
 All form fields should be set to non-undefined default values.
 Read more here: https://legacy.react-hook-form.com/api/useform/
 */
-const defaultValues: Partial<FormData> = {
+const defaultValues: Partial<SpeciesFormData> = {
   scientific_name: "",
   common_name: null,
   kingdom: "Animalia",
@@ -81,13 +81,13 @@ export default function AddSpeciesDialog({ userId }: { userId: string }) {
   const [open, setOpen] = useState<boolean>(false);
 
   // Instantiate form functionality with React Hook Form, passing in the Zod schema (for validation) and default values
-  const form = useForm<FormData>({
+  const form = useForm<SpeciesFormData>({
     resolver: zodResolver(speciesSchema),
     defaultValues,
     mode: "onChange",
   });
 
-  const onSubmit = async (input: FormData) => {
+  const onSubmit = async (input: SpeciesFormData) => {
     // The `input` prop contains data that has already been processed by zod. We can now use it in a supabase query
     const supabase = createBrowserSupabaseClient();
     const { error } = await supabase.from("species").insert([

@@ -5,12 +5,25 @@ import { redirect } from "next/navigation";
 import AddSpeciesDialog from "./add-species-dialog";
 import SpeciesCard from "./species-card";
 import type { Database } from "@/lib/schema";
+import { QueryData } from "@supabase/supabase-js";
+
 
 export type Comment = Database["public"]["Tables"]["comments"]["Row"];
 
+const supabase = createServerSupabaseClient();
+const commentsWithNamesQuery = supabase.from("comments").select(`
+    id,
+    created_at,
+    content,
+    author,
+    species,
+    profiles ( id, display_name )
+  `).order("created_at", { ascending: false });
+
+  export type CommentsWithNames = QueryData<typeof commentsWithNamesQuery>
+
 export default async function SpeciesList() {
   // Create supabase server component client and obtain user session from stored cookie
-  const supabase = createServerSupabaseClient();
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -23,8 +36,12 @@ export default async function SpeciesList() {
   // Obtain the ID of the currently signed-in user
   const sessionId = session.user.id;
 
+  // Load data from 'species' and 'comments' tables in Supabase
   const { data: species } = await supabase.from("species").select("*").order("id", { ascending: false });
-  const { data: comments } = await supabase.from("comments").select("*").order("created_at", { ascending: false });
+  const { data } = await commentsWithNamesQuery;
+  const commentsWithNames = data;
+
+  console.log(commentsWithNames);
 
   return (
     <>
@@ -34,8 +51,18 @@ export default async function SpeciesList() {
       </div>
       <Separator className="my-4" />
       <div className="flex flex-wrap justify-center">
-        {species?.map((species) => <SpeciesCard key={species.id} species={species} comments={comments?.filter((comment) => comment.species == species.id).map((filteredComment) => filteredComment) ?? []} userId={sessionId} />)}
+        {
+        // For each species, create a species card and pass in props (including species comments)
+        species?.map((species) => <SpeciesCard
+          key={species.id}
+          species={species}
+          comments={
+            //comments?.filter((comment) => comment.species == species.id).map((filteredComment) => filteredComment) ?? []
+            commentsWithNames?.filter((comment) => comment.species == species.id).map((filteredComment) => filteredComment) ?? []
+          }
+          userId={sessionId} />)}
       </div>
     </>
   );
 }
+//profiles?.filter((profile) => profile.id == filteredComment.author)

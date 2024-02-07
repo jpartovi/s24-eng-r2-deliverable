@@ -15,13 +15,12 @@ import { createServerSupabaseClient } from "@/lib/server-utils";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import SpeciesDetailsDialog from "./species-details-dialog";
-import { Comment } from "./page";
+import { Comment, CommentsWithNames } from "./page";
 export type Species = Database["public"]["Tables"]["species"]["Row"];
 
-//export default  function SpeciesCard({ species }: { species: Species }, { userId }: { userId: string }) {
-export default  function SpeciesCard({ species, comments, userId }: {
+export default function SpeciesCard({ species, comments, userId }: {
   species: Species;
-  comments: Comment[];
+  comments: CommentsWithNames;
   userId: string;
 }) {
 

@@ -22,45 +22,13 @@ import { z } from "zod";
 import { numberWithCommas } from "../formatting";
 import Image from "next/image";
 import CommentCard from "./comment-card";
-import { Comment } from "./page";
+import { Comment, CommentsWithNames } from "./page";
 import { Species } from "./species-card";
+import { kingdoms } from "./add-species-dialog";
+import { speciesSchema } from "./add-species-dialog";
+import { SpeciesFormData } from "./add-species-dialog";
 
-// We use zod (z) to define a schema for the "Add species" form.
-// zod handles validation of the input values with methods like .string(), .nullable(). It also processes the form inputs with .transform() before the inputs are sent to the database.
-
-// Define kingdom enum for use in Zod schema and displaying dropdown options in the form
-const kingdoms = z.enum(["Animalia", "Plantae", "Fungi", "Protista", "Archaea", "Bacteria"]);
-
-// Use Zod to define the shape + requirements of a Species entry; used in form validation
-const speciesSchema = z.object({
-  scientific_name: z
-    .string()
-    .trim()
-    .min(1)
-    .transform((val) => val?.trim()),
-  common_name: z
-    .string()
-    .nullable()
-    // Transform empty string or only whitespace input to null before form submission, and trim whitespace otherwise
-    .transform((val) => (!val || val.trim() === "" ? null : val.trim())),
-  kingdom: kingdoms,
-  total_population: z.number().int().positive().min(1).nullable(),
-  image: z
-    .string()
-    .url()
-    .nullable()
-    // Transform empty string or only whitespace input to null before form submission, and trim whitespace otherwise
-    .transform((val) => (!val || val.trim() === "" ? null : val.trim())),
-  description: z
-    .string()
-    .nullable()
-    // Transform empty string or only whitespace input to null before form submission, and trim whitespace otherwise
-    .transform((val) => (!val || val.trim() === "" ? null : val.trim())),
-});
-
-type SpeciesFormData = z.infer<typeof speciesSchema>;
-
-// Use Zod to define the shape + requirements of a Profile entry; used in form validation
+// Use Zod to define the shape + requirements of a Comment entry; used in form validation
 const commentFormSchema = z.object({
   content: z
     .string()
@@ -70,6 +38,9 @@ const commentFormSchema = z.object({
     .max(150, {
       message: "Comment must not be longer than 150 characters.",
     })
+    .refine((value) => value.trim() !== '', {
+      message: 'String cannot be empty or contain only whitespace',
+    })
     .transform((val) => val.trim())
 });
 
@@ -77,7 +48,7 @@ type CommentFormData = z.infer<typeof commentFormSchema>
 
 export default function SpeciesDetailsDialog({ species, comments, userId }: {
   species: Species;
-  comments: Comment[];
+  comments: CommentsWithNames;
   userId: string;
 }) {
 
@@ -96,7 +67,7 @@ export default function SpeciesDetailsDialog({ species, comments, userId }: {
 
   const supabase = createBrowserSupabaseClient();
 
-  // Default values for the form fields.
+  // Default values for the species form fields.
   const speciesDefaultValues: Partial<SpeciesFormData> = {
     scientific_name: species.scientific_name,
     common_name: species.common_name,
@@ -107,13 +78,14 @@ export default function SpeciesDetailsDialog({ species, comments, userId }: {
   };
 
 
-  // Instantiate form functionality with React Hook Form, passing in the Zod schema (for validation) and default values.
+  // Instantiate species form functionality with React Hook Form, passing in the Zod schema (for validation) and default values.
   const speciesForm = useForm<SpeciesFormData>({
     resolver: zodResolver(speciesSchema),
     defaultValues: speciesDefaultValues,
     mode: "onChange",
   });
 
+  // Handles the "Save Changes" button: updates the species information in Supabase and returns to non-editing mode
   const onSaveChanges = async (input: SpeciesFormData) => {
 
     // Update the current species with Supabase query.
@@ -130,7 +102,6 @@ export default function SpeciesDetailsDialog({ species, comments, userId }: {
     }
 
     setIsEditing(false)
-
 
     // Reset form values.
     speciesForm.reset(input);
@@ -160,7 +131,7 @@ export default function SpeciesDetailsDialog({ species, comments, userId }: {
     flipEditing();
   }
 
-  // Handles delete button with a confirmation modal and deletes the current species from the Supabase db
+  // Handles delete button with a confirmation modal and deletes the current species from Supabase
   const handleDelete = async () => {
     if (!window.confirm("Are you sure you want to delete this species?")) {
       return;
@@ -191,13 +162,11 @@ export default function SpeciesDetailsDialog({ species, comments, userId }: {
     });
   }
 
-  // TODO: COMMENTS
-
   type CommentFormValues = z.infer<typeof commentFormSchema>;
 
+  // Default values for the comment form field.
   const commentDefaultValues = {
-    content: "",
-    species: species.id
+    content: ""
   };
 
   // Instantiate form functionality with React Hook Form, passing in the Zod schema (for validation) and default values
@@ -403,7 +372,6 @@ export default function SpeciesDetailsDialog({ species, comments, userId }: {
               </div>
             )}
             <h4 className="mt-3 text-lg font-medium">
-              {/* TODO: format this nicer*/}
               Kingdom: {species.kingdom} {species.total_population ? ", Total Population: " + numberWithCommas(species.total_population): ""}
             </h4>
             <p>{species.description ? species.description : ""}</p>
@@ -429,7 +397,9 @@ export default function SpeciesDetailsDialog({ species, comments, userId }: {
               </form>
             </Form>
             {comments.length != 0 && <div className="m-4 flex flex-wrap justify-center">
-              {comments?.map((comment) => <CommentCard key={comment.id} comment={comment} userId={userId}/>)}
+              {
+                comments?.map((comment) => <CommentCard key={comment.id} comment={comment} userId={userId}/>)
+              }
             </div>}
           </div>
         )}
